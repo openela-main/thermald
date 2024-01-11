@@ -1,0 +1,15 @@
+diff --git a/src/main.cpp b/src/main.cpp
+index 6e2f5e4..b4b9317 100644
+--- a/src/main.cpp
++++ b/src/main.cpp
+@@ -51,6 +51,10 @@
+ #define TD_DIST_VERSION PACKAGE_VERSION
+ #endif
+ 
++#ifndef G_SOURCE_FUNC
++#define G_SOURCE_FUNC(f) ((GSourceFunc) (void (*)(void)) (f))
++#endif
++
+ #define EXIT_UNSUPPORTED 2
+ 
+ extern int thd_dbus_server_init(gboolean (*exit_handler)(void));
