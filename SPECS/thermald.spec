@@ -7,7 +7,7 @@
 
 
 Name:		thermald
-Version:	2.5.2
+Version:	2.5.3
 Release:	1%{?dist}
 Summary:	Thermal Management daemon
 
@@ -251,6 +251,10 @@ exit 0
 
 
 %changelog
+* Tue Aug 22 2023 Kate Hsuan <hpa@redhat.com> - 2.5.3-1
+- Update to 2.5.3
+  Resolves: rhbz#2221062
+
 * Thu Feb 23 2023 Bastien Nocera <bnocera@redhat.com> - 2.5.2-1
 - Update to 2.5.2
 Resolves: rhbz#2172590
