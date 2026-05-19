@@ -1,0 +1,104 @@
+From 352125763b8f9866cd9318c1c2a70a5dcf841b20 Mon Sep 17 00:00:00 2001
+From: Srinivas Pandruvada <srinivas.pandruvada@linux.intel.com>
+Date: Wed, 15 Oct 2025 20:00:33 -0700
+Subject: [PATCH] itmt3 support
+
+Added ITMT3 table parsing. The elements used here are same as before
+but there is a structure change.
+
+Signed-off-by: Srinivas Pandruvada <srinivas.pandruvada@linux.intel.com>
+---
+ src/thd_gddv.cpp | 60 ++++++++++++++++++++++++++++++++++++++++++++++++
+ src/thd_gddv.h   |  1 +
+ 2 files changed, 61 insertions(+)
+
+diff --git a/src/thd_gddv.cpp b/src/thd_gddv.cpp
+index d5348259..36156e47 100644
+--- a/src/thd_gddv.cpp
++++ b/src/thd_gddv.cpp
+@@ -601,6 +601,58 @@ struct psvt* cthd_gddv::find_def_psvt() {
+ 	return NULL;
+ }
+ 
++struct __attribute__((packed)) itmt3_header {
++	uint32_t reserved;
++	uint64_t revision;
++};
++
++struct __attribute__((packed)) itmt3 {
++	char target[64];
++	uint64_t  temp;
++	uint64_t reserved_1;
++	char pl1_min[64];
++	char pl1_max[64];
++	char reserved_2[88];
++};
++
++int cthd_gddv::parse_itmt3(char *name, char *buf, unsigned int len) {
++	unsigned int offset = 0;
++	struct itmt itmt;
++
++	if (name == NULL)
++		itmt.name = "Default";
++	else
++		itmt.name = name;
++
++	if (len < sizeof(struct itmt3_header))
++		return THD_ERROR;
++
++	offset += sizeof(struct itmt3_header);
++
++	if (len - offset < sizeof(struct itmt3))
++		return THD_ERROR;
++
++	while (offset < len) {
++		struct itmt_entry itmt_entry;
++		struct itmt3 *entry = (struct itmt3 *)&buf[offset];
++
++		if (len - offset < sizeof(struct itmt3))
++			return THD_ERROR;
++
++		itmt_entry.target = entry->target;
++		itmt_entry.trip_point = entry->temp;
++		itmt_entry.pl1_min = entry->pl1_min;
++		itmt_entry.pl1_max = entry->pl1_max;
++
++		offset += sizeof(struct itmt3);
++		itmt.itmt_entries.push_back(itmt_entry);
++	}
++
++	itmts.push_back(itmt);
++
++	return 0;
++}
++
+ int cthd_gddv::parse_itmt(char *name, char *buf, int len) {
+ 	int offset = 0;
+ 	int version = get_uint64(buf, &offset);
+@@ -920,6 +972,14 @@ int cthd_gddv::parse_gddv_key(char *buf, int size, int *end_offset) {
+ 		parse_apat(val, vallength);
+ 	}
+ 
++	if (type && strncmp(type, "itmt3", strlen("itmt3")) == 0) {
++		thd_log_debug("Found ITMT 3\n");
++		if (point == NULL)
++			parse_itmt3(name, val, vallength);
++		else
++			parse_itmt3(point, val, vallength);
++	}
++
+ 	if (type && strcmp(type, "itmt") == 0) {
+ 		if (point == NULL)
+ 			parse_itmt(name, val, vallength);
+diff --git a/src/thd_gddv.h b/src/thd_gddv.h
+index ecbe3de9..415339c4 100644
+--- a/src/thd_gddv.h
++++ b/src/thd_gddv.h
+@@ -211,6 +211,7 @@ class cthd_gddv {
+ 	int parse_ppcc(char *name, char *ppcc, int len);
+ 	int parse_psvt(char *name, char *psvt, int len);
+ 	int parse_itmt(char *name, char *itmt, int len);
++	int parse_itmt3(char *name, char *itmt, unsigned int len);
+ 	int parse_trt(char *trt, int len);
+ 	void parse_idsp(char *name, char *idsp, int len);
+ 	void parse_trip_point(char *name, char *type, char *val, int len);
